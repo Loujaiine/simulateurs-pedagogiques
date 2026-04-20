@@ -1,0 +1,1144 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LignesSim Pro v3 — Lignes de Courant · Trajectoires · Émission</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+var SCORM_ACTIVE=false,scorm=null;
+window.addEventListener('load',function(){if(typeof pipwerks!=='undefined'){scorm=pipwerks.SCORM;scorm.version="1.2";SCORM_ACTIVE=scorm.init();if(SCORM_ACTIVE){scorm.set("cmi.core.lesson_status","incomplete");scorm.save();}}});
+window.addEventListener('beforeunload',function(){if(SCORM_ACTIVE&&window._finalScore!=null){scorm.set("cmi.core.score.raw",String(window._finalScore));scorm.set("cmi.core.score.min","0");scorm.set("cmi.core.score.max","20");scorm.set("cmi.core.lesson_status",window._finalScore>=10?"passed":"failed");scorm.save();scorm.quit();}});
+</script>
+<style>
+:root{
+  --bg:#f5f0e8;--bg2:#ede8df;--bg3:#e4ddd2;--surf:#faf7f2;--bord:#d4c9b8;--bord2:#b8a990;
+  --text:#1a1410;--dim:#5c4f3d;--faint:#9e8e78;
+  --teal:#007a72;--teal-l:#00a89d;--amber:#b86800;--green:#1a7a40;
+  --mono:'IBM Plex Mono',monospace;--body:'IBM Plex Sans',sans-serif;
+  --sh:0 1px 4px rgba(80,60,30,.10);
+  /* Line colours */
+  --CS:#007a72;  /* streamline  teal   */
+  --CP:#b86800;  /* pathline    amber  */
+  --CK:#6b3fa0;  /* streakline  purple */
+  --CSrc:#c0392b;/* source      red    */
+  --CPar:#b86800;/* trajectory  amber  */
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+html,body{height:100%;font-family:var(--body);background:var(--bg);color:var(--text);overflow:hidden;}
+/* author */
+#ab{background:linear-gradient(90deg,#0d2440,#0a3a46);padding:.38rem 1.1rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;flex-shrink:0;}
+.ab-l{display:flex;align-items:center;gap:.55rem;}
+.ab-av{width:24px;height:24px;border-radius:50%;background:var(--amber);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-weight:700;font-size:.68rem;color:#fff;flex-shrink:0;}
+.ab-name{font-family:var(--mono);font-weight:700;font-size:.72rem;color:#fff;}
+.ab-role{font-size:.61rem;color:rgba(255,255,255,.45);}
+.ab-course{font-size:.59rem;color:rgba(255,255,255,.27);font-family:var(--mono);}
+/* topbar */
+.topbar{height:38px;background:var(--surf);border-bottom:2px solid var(--bord);display:flex;align-items:center;justify-content:space-between;padding:0 12px;flex-shrink:0;position:relative;box-shadow:var(--sh);}
+.logo{font-family:var(--mono);font-size:11px;font-weight:700;color:var(--teal);letter-spacing:2px;white-space:nowrap;}
+.tc{position:absolute;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;line-height:1.2;pointer-events:none;}
+.tc-t{font-size:10px;color:var(--text);font-weight:600;white-space:nowrap;}
+.tc-s{font-size:8px;color:var(--faint);font-family:var(--mono);}
+.schip{font-family:var(--mono);font-size:9.5px;padding:2px 7px;border-radius:3px;background:rgba(184,104,0,.08);border:1px solid rgba(184,104,0,.25);color:var(--amber);display:none;}
+/* layout */
+.app{display:flex;overflow:hidden;}
+.sb{width:178px;flex-shrink:0;background:var(--bg2);border-right:1px solid var(--bord);display:flex;flex-direction:column;}
+.sb-hdr{font-family:var(--mono);font-size:8px;color:var(--faint);letter-spacing:2px;padding:11px 11px 4px;text-transform:uppercase;}
+.ni{display:flex;align-items:center;gap:8px;padding:8px 11px;cursor:pointer;border-left:3px solid transparent;transition:all .14s;}
+.ni:hover{background:var(--bg3);}
+.ni.active{background:rgba(0,122,114,.07);border-left-color:var(--teal);}
+.ni.done{border-left-color:var(--green);}
+.nn{width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:9px;font-weight:700;flex-shrink:0;background:var(--bord);color:var(--faint);}
+.ni.active .nn{background:var(--teal);color:#fff;}
+.ni.done .nn{background:var(--green);color:#fff;}
+.nl{font-size:11px;font-weight:500;color:var(--dim);}
+.ni.active .nl{color:var(--text);font-weight:600;}
+.ni.done .nl{color:var(--green);}
+.ct{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0;}
+.page{flex:1;overflow-y:auto;padding:11px 15px;display:none;flex-direction:column;gap:9px;}
+.page.active{display:flex;}
+/* bottom nav */
+.bot{padding:6px 13px;border-top:2px solid var(--bord);background:var(--surf);display:flex;justify-content:space-between;align-items:center;flex-shrink:0;}
+.btn{padding:5px 14px;border-radius:5px;font-family:var(--mono);font-size:10px;font-weight:700;cursor:pointer;border:1px solid;transition:all .14s;letter-spacing:.4px;}
+.bg{background:transparent;border-color:var(--bord2);color:var(--dim);}
+.bg:hover:not(:disabled){border-color:var(--dim);color:var(--text);}
+.bg:disabled{opacity:.3;cursor:not-allowed;}
+.bt{background:var(--teal);border-color:var(--teal);color:#fff;}
+.bt:hover{background:var(--teal-l);}
+.si{font-family:var(--mono);font-size:9.5px;color:var(--dim);}
+/* shared */
+.ptitle{font-family:var(--mono);font-size:13px;font-weight:700;color:var(--text);border-bottom:2px solid var(--teal);padding-bottom:6px;}
+.card{background:var(--surf);border:1px solid var(--bord);border-radius:8px;padding:11px;box-shadow:var(--sh);}
+.chdr{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:7px;}
+/* formula box — no sub/sup, just use proper chars */
+.fml{background:var(--bg2);border-left:3px solid;border-radius:0 5px 5px 0;padding:7px 12px;font-family:var(--mono);font-size:12px;text-align:center;margin:5px 0;line-height:1.7;}
+.sim-wrap{display:grid;grid-template-columns:1fr 230px;gap:9px;flex:1;min-height:0;}
+.czone{background:var(--surf);border:1px solid var(--bord);border-radius:8px;overflow:hidden;box-shadow:var(--sh);display:flex;flex-direction:column;min-height:0;}
+.chdr-bar{padding:5px 9px;border-bottom:1px solid var(--bord);background:var(--bg2);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:4px;flex-shrink:0;}
+#mainCanvas{flex:1;min-height:0;cursor:crosshair;display:block;}
+.cfoot{padding:3px 9px;border-top:1px solid var(--bord);background:var(--bg2);font-family:var(--mono);font-size:8px;color:var(--faint);display:flex;justify-content:space-between;flex-shrink:0;}
+.leg{display:flex;align-items:center;gap:4px;font-size:9px;font-family:var(--mono);}
+/* controls */
+.cblk{background:var(--surf);border:1px solid var(--bord);border-radius:7px;overflow:hidden;margin-bottom:7px;box-shadow:var(--sh);}
+.chd{padding:5px 10px;border-bottom:1px solid var(--bord);font-family:var(--mono);font-size:8px;font-weight:700;letter-spacing:1.5px;color:var(--dim);text-transform:uppercase;background:var(--bg2);}
+.cbd{padding:6px 7px;display:flex;flex-direction:column;gap:4px;}
+.crow{display:flex;align-items:center;gap:3px;min-width:0;}
+.clbl{font-size:8.5px;color:var(--dim);min-width:54px;flex-shrink:0;white-space:nowrap;}
+.cval{font-family:var(--mono);font-size:8.5px;color:var(--teal);width:36px;text-align:right;flex-shrink:0;overflow:hidden;white-space:nowrap;}
+input[type=range]{flex:1;min-width:0;-webkit-appearance:none;height:3px;background:var(--bord2);border-radius:2px;outline:none;cursor:pointer;}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:11px;height:11px;border-radius:50%;background:var(--teal);cursor:pointer;border:2px solid var(--surf);}
+/* formula display in params */
+.fml-param{background:var(--bg2);border:1px solid var(--bord);border-radius:5px;padding:6px 7px;margin-bottom:2px;font-family:var(--mono);font-size:8px;line-height:1.8;color:var(--dim);}
+.fp-eq{font-size:9px;color:var(--text);font-weight:600;display:block;margin-bottom:2px;}
+.fp-u{color:#007a72;font-weight:700;}   /* U0 — teal */
+.fp-a{color:#b86800;font-weight:700;}   /* A  — amber */
+.fp-w{color:#6b3fa0;font-weight:700;}   /* ω  — purple */
+.fp-r{color:#1a7a40;font-weight:700;}   /* R  — green */
+.fp-h{color:#1a5294;font-weight:700;}   /* H  — blue */
+input[type=range]{flex:1;-webkit-appearance:none;height:3px;background:var(--bord2);border-radius:2px;outline:none;cursor:pointer;}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;border-radius:50%;background:var(--teal);cursor:pointer;border:2px solid var(--surf);}
+.rr{display:flex;gap:4px;}
+.rbtn{flex:1;padding:4px;text-align:center;border:1.5px solid var(--bord2);border-radius:4px;background:var(--bg2);color:var(--dim);cursor:pointer;font-family:var(--mono);font-size:9px;font-weight:700;transition:all .14s;}
+.rbtn.on-s{border-color:var(--teal);color:var(--teal);background:rgba(0,122,114,.1);}
+.rbtn.on-i{border-color:var(--amber);color:var(--amber);background:rgba(184,104,0,.1);}
+.rpill{font-family:var(--mono);font-size:8.5px;font-weight:700;padding:2px 6px;border-radius:3px;border:1.5px solid;}
+.rpill.stat{color:var(--teal);border-color:var(--teal);background:rgba(0,122,114,.08);}
+.rpill.inst{color:var(--amber);border-color:var(--amber);background:rgba(184,104,0,.08);}
+.chk{display:flex;align-items:center;gap:5px;cursor:pointer;padding:2px 0;}
+.chkb{width:13px;height:13px;border-radius:3px;border:1.5px solid var(--bord2);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:9px;transition:all .14s;}
+.chklbl{font-size:10px;font-weight:600;}
+.coinc{background:rgba(0,122,114,.08);border:1.5px solid rgba(0,122,114,.3);border-radius:5px;padding:5px 8px;font-family:var(--mono);font-size:9px;color:var(--teal);text-align:center;display:none;}
+.coinc.show{display:block;}
+/* theory */
+.th3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px;}
+.tc2{background:var(--surf);border:1px solid var(--bord);border-radius:8px;padding:11px;border-top:3px solid;box-shadow:var(--sh);}
+.tc2 p{font-size:11.5px;color:var(--dim);line-height:1.7;}
+.tc2 strong{color:var(--text);}
+.xb{margin-top:5px;padding:5px 8px;border-radius:5px;font-size:10px;color:var(--dim);line-height:1.5;}
+/* simulator legend box in theory */
+.sim-key{background:var(--bg2);border:1px solid var(--bord);border-radius:6px;padding:9px 12px;margin-top:6px;}
+.sim-key-title{font-family:var(--mono);font-size:8.5px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--faint);margin-bottom:7px;}
+.sk-row{display:flex;align-items:center;gap:8px;margin-bottom:5px;font-size:11.5px;color:var(--dim);}
+.sk-row:last-child{margin-bottom:0;}
+.sk-swatch{flex-shrink:0;display:flex;align-items:center;gap:3px;}
+/* quiz */
+.qcard{background:var(--surf);border:1px solid var(--bord);border-radius:8px;overflow:hidden;margin-bottom:7px;box-shadow:var(--sh);}
+.qtop{padding:9px 12px;border-bottom:1px solid var(--bord);display:flex;gap:7px;align-items:flex-start;background:var(--bg2);}
+.qtag{font-family:var(--mono);font-size:8px;padding:2px 5px;border-radius:3px;background:rgba(0,122,114,.08);border:1px solid rgba(0,122,114,.2);color:var(--teal);flex-shrink:0;font-weight:700;}
+.qtxt{font-size:12px;line-height:1.6;color:var(--text);font-weight:500;}
+.qopts{padding:8px 12px;display:flex;flex-direction:column;gap:4px;}
+.qopt{padding:6px 9px;border-radius:3px;cursor:pointer;border:1px solid var(--bord);font-size:11.5px;color:var(--dim);transition:all .14s;}
+.qopt:hover:not(.locked){border-color:var(--teal);background:rgba(0,122,114,.05);color:var(--text);}
+.qopt.sel{border-color:var(--teal);background:rgba(0,122,114,.09);color:var(--text);}
+.qopt.sel-l{border-color:var(--bord2);background:rgba(100,90,80,.05);color:var(--dim);}
+.qopt.locked{cursor:default;pointer-events:none;}
+.qfoot{padding:7px 12px;display:flex;gap:7px;align-items:center;border-top:1px solid var(--bord);}
+.qfb{font-family:var(--mono);font-size:9px;color:var(--faint);}
+.qsw{background:var(--surf);border:1px solid var(--bord);border-radius:8px;padding:11px;display:none;align-items:center;gap:11px;box-shadow:var(--sh);}
+.qsw.show{display:flex;}
+.qsb{font-family:var(--mono);font-size:26px;font-weight:700;color:var(--amber);}
+/* cr */
+.crgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.crb{display:flex;flex-direction:column;gap:3px;}
+.crl{font-family:var(--mono);font-size:8px;color:var(--faint);text-transform:uppercase;letter-spacing:2px;}
+.crq{font-size:11.5px;color:var(--text);font-weight:500;line-height:1.5;margin-bottom:2px;font-style:italic;}
+.crta{background:var(--bg2);border:1px solid var(--bord2);border-radius:5px;padding:7px;font-size:12px;font-family:var(--body);color:var(--text);outline:none;resize:vertical;width:100%;}
+.crta:focus{border-color:var(--teal);}
+.fsp{background:var(--surf);border:1px solid var(--bord);border-radius:8px;padding:12px;align-items:center;gap:13px;flex-wrap:wrap;box-shadow:var(--sh);display:none;}
+.fsp.show{display:flex;}
+.fsb{font-family:var(--mono);font-size:32px;font-weight:700;line-height:1;color:var(--amber);}
+</style>
+</head>
+<body>
+
+<div id="ab">
+  <div class="ab-l">
+    <div class="ab-av">AK</div>
+    <div>
+      <div class="ab-name">Dr. Loujaine KHOUZAM</div>
+      <div class="ab-role">Doctorat en Energétique &nbsp;|&nbsp; loujainekhouzam@gmail.com</div>
+    </div>
+  </div>
+  <div class="ab-course">Cinématique des Fluides · Lignes de courant · Trajectoires · Lignes d'émission · 2025–2026</div>
+</div>
+
+<div class="topbar">
+  <span class="logo">LIGNESSIM PRO v3</span>
+  <div class="tc">
+    <span class="tc-t">Lignes de Courant · Trajectoires · Lignes d'Émission</span>
+    <span class="tc-s">Écoulement autour d'un cylindre — Régimes stationnaire &amp; instationnaire</span>
+  </div>
+  <span class="schip" id="scoreChip"></span>
+</div>
+
+<div class="app" id="appRoot" style="height:calc(100vh - 62px);">
+<aside class="sb">
+  <div class="sb-hdr">Navigation</div>
+  <div class="ni active" id="nav-0"><div class="nn">1</div><span class="nl">Objectifs</span></div>
+  <div class="ni" id="nav-1"><div class="nn">2</div><span class="nl">Théorie</span></div>
+  <div class="ni" id="nav-2"><div class="nn">3</div><span class="nl">Simulateur</span></div>
+  <div class="ni" id="nav-3"><div class="nn">4</div><span class="nl">Quiz</span></div>
+  <div class="ni" id="nav-4"><div class="nn">5</div><span class="nl">Compte-rendu</span></div>
+</aside>
+
+<div class="ct">
+
+<div class="page active" id="pg-0">
+  <div class="ptitle">Objectifs du TP</div>
+  <div style="display:flex;gap:7px;flex-wrap:wrap;">
+    <span style="font-family:var(--mono);font-size:9.5px;padding:2px 8px;border-radius:20px;border:1.5px solid var(--CS);color:var(--CS);background:rgba(0,122,114,.08);font-weight:700;">— Ligne de courant</span>
+    <span style="font-family:var(--mono);font-size:9.5px;padding:2px 8px;border-radius:20px;border:1.5px solid var(--CK);color:var(--CK);background:rgba(107,63,160,.08);font-weight:700;">·· Ligne d'émission (source)</span>
+    <span style="font-family:var(--mono);font-size:9.5px;padding:2px 8px;border-radius:20px;border:1.5px solid var(--CPar);color:var(--CPar);background:rgba(22,160,133,.08);font-weight:700;">-- Trajectoire (particule)</span>
+  </div>
+  <div class="card">
+    <ul style="margin-left:15px;font-size:12px;color:var(--text);line-height:2.0;">
+      <li>Donner la <strong>définition mathématique</strong> des trois types de lignes de visualisation.</li>
+      <li>Observer que les lignes de courant sont <strong>courbées</strong> (contournement de cylindre) — pas uniquement des droites.</li>
+      <li>Comprendre la ligne d'émission : <strong>connexion de toutes les particules d'une même source</strong> à un instant T.</li>
+      <li>Distinguer visuellement trajectoire et ligne d'émission depuis <strong>une seule source</strong>.</li>
+      <li>Vérifier la propriété fondamentale : <strong>coïncidence des 3 types en régime stationnaire</strong>.</li>
+    </ul>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px;">
+    <div class="card" style="border-top:3px solid var(--CS);">
+      <div class="chdr" style="color:var(--CS);">Ligne de Courant</div>
+      <div style="font-size:11.5px;color:var(--dim);line-height:1.7;">Courbe <strong>instantanée</strong> tangente à V en tout point à t* fixé. Equation : dx/u = dy/v. Peut être <strong>courbée</strong> si le champ est inhomogène en espace.</div>
+    </div>
+    <div class="card" style="border-top:3px solid var(--CK);">
+      <div class="chdr" style="color:var(--CK);">Ligne d'Émission</div>
+      <div style="font-size:11.5px;color:var(--dim);line-height:1.7;">À l'instant T, <strong>connexion</strong> de toutes les particules issues d'une source M₀ à des instants t ≤ T. Injecteur continu (cheminée).</div>
+    </div>
+    <div class="card" style="border-top:3px solid var(--CPar);">
+      <div class="chdr" style="color:var(--CPar);">Trajectoire</div>
+      <div style="font-size:11.5px;color:var(--dim);line-height:1.7;">Chemin <strong>réel</strong> d'une particule identifiée depuis t₀ — description lagrangienne. Distincte de la ligne d'émission en régime instationnaire.</div>
+    </div>
+  </div>
+  <div class="card" style="background:rgba(0,122,114,.04);border-color:rgba(0,122,114,.3);">
+    <div class="chdr" style="color:var(--teal);">Choix du modèle : écoulement potentiel autour d'un cylindre</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <div style="font-size:11.5px;color:var(--dim);line-height:1.7;">L'écoulement potentiel autour d'un cylindre de rayon R est le modèle le plus simple donnant des <strong>lignes de courant courbées</strong>. En régime permanent, les particules dévient autour du cylindre. En ajoutant une oscillation verticale, les 3 types de lignes divergent clairement.</div>
+      <div style="font-size:11.5px;color:var(--dim);line-height:1.7;">
+        <div style="font-family:var(--mono);font-size:10px;padding:5px 8px;background:var(--bg2);border-radius:5px;line-height:1.8;">
+          u(x,y) = U₀[1 - R²(x²-y²)/(x²+y²)²]<br>
+          v(x,y) = -U₀[-2R²·x·y/(x²+y²)²]<br>+ A·sin(ωt) en instationnaire
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="page" id="pg-1">
+  <div class="ptitle">Théorie Fondamentale</div>
+  <div class="th3">
+    <div class="tc2" style="border-top-color:var(--CS);">
+      <div class="chdr" style="color:var(--CS);">Ligne de Courant</div>
+      <div class="fml" style="border-color:var(--CS);color:var(--CS);">dx/u(x,y,t*) = dy/v(x,y,t*)</div>
+      <p>Courbe dont la <strong>tangente</strong> est colinéaire à V en tout point, à t* fixé. Pas d'écoulement à travers une ligne de courant. En stationnaire : courbes fixes. En instationnaire : les courbes <strong>changent à chaque instant</strong>.</p>
+      <div class="xb" style="background:rgba(0,122,114,.08);">📷 <strong>PIV</strong> — deux flashs rapprochés : champ instantané.</div>
+      <div class="sim-key">
+        <div class="sim-key-title">Dans le simulateur</div>
+        <div class="sk-row">
+          <div class="sk-swatch"><svg width="30" height="5"><line x1="0" y1="2.5" x2="30" y2="2.5" stroke="#007a72" stroke-width="2.5"/></svg></div>
+          <span><strong>Lignes teal continues</strong> : lignes de courant à l'instant t courant. Elles contournent le cylindre (gris). Activez/désactivez avec la case "Lig. de courant".</span>
+        </div>
+        <div class="sk-row">
+          <div class="sk-swatch"><svg width="10" height="10"><polygon points="5,0 9.3,3 7.6,8.5 2.4,8.5 0.7,3" fill="#007a72" opacity="0.6"/></svg></div>
+          <span>Les <strong>flèches</strong> sur les lignes de courant indiquent la direction locale du vecteur vitesse.</span>
+        </div>
+      </div>
+    </div>
+    <div class="tc2" style="border-top-color:var(--CK);">
+      <div class="chdr" style="color:var(--CK);">Ligne d'Émission</div>
+      <div class="fml" style="border-color:var(--CK);color:var(--CK);">X(M0, tau, T) pour tout tau ≤ T</div>
+      <p>À l'instant T, <strong>ligne reliant toutes les particules</strong> passées par M₀ à des instants tau ≤ T. Visualisée par injection continue d'un colorant depuis un point fixe.</p>
+      <div class="xb" style="background:rgba(107,63,160,.08);">💧 <strong>Colorant / fumée</strong> — snapshot à T de tout le filet injecté.</div>
+      <div class="sim-key">
+        <div class="sim-key-title">Dans le simulateur</div>
+        <div class="sk-row">
+          <div class="sk-swatch">
+            <svg width="10" height="10"><circle cx="5" cy="5" r="5" fill="#c0392b"/></svg>
+          </div>
+          <span>La <strong>cheminée rouge</strong> est la source M₀. Elle émet des particules en continu.</span>
+        </div>
+        <div class="sk-row">
+          <div class="sk-swatch">
+            <svg width="10" height="10"><circle cx="5" cy="5" r="4" fill="#6b3fa0" opacity=".7"/></svg>
+            <svg width="22" height="4"><line x1="0" y1="2" x2="22" y2="2" stroke="#6b3fa0" stroke-width="2.5"/></svg>
+          </div>
+          <span>Les <strong>points violets</strong> = particules émises. La <strong>courbe violette</strong> qui les relie = ligne d'émission à l'instant T.</span>
+        </div>
+      </div>
+    </div>
+    <div class="tc2" style="border-top-color:var(--CPar);">
+      <div class="chdr" style="color:var(--CPar);">Trajectoire</div>
+      <div class="fml" style="border-color:var(--CPar);color:var(--CPar);">dX/dt = V(X(t), t)  —  X(t0) = X0</div>
+      <p>Positions successives d'une <strong>particule identifiée</strong> depuis t₀. Notion <strong>lagrangienne</strong>. Peut croiser d'autres trajectoires en instationnaire.</p>
+      <div class="xb" style="background:rgba(22,160,133,.08);">📷 <strong>Longue pose</strong> — trace d'une particule fluorescente.</div>
+      <div class="sim-key">
+        <div class="sim-key-title">Dans le simulateur</div>
+        <div class="sk-row">
+          <div class="sk-swatch">
+            <svg width="10" height="10"><circle cx="5" cy="5" r="5" fill="#16a085"/></svg>
+          </div>
+          <span>Le <strong>point vert</strong> = particule tracée (lâchée depuis la source à t=0).</span>
+        </div>
+        <div class="sk-row">
+          <div class="sk-swatch">
+            <svg width="22" height="4"><line x1="0" y1="2" x2="22" y2="2" stroke="#16a085" stroke-width="2" stroke-dasharray="6,3"/></svg>
+          </div>
+          <span>La <strong>courbe verte pointillée</strong> = trajectoire de cette particule. Comparez-la à la courbe violette (ligne d'émission) : <em>elles divergent en instationnaire !</em></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="chdr">Expressions analytiques — V = U0·ex + A·sin(wt)·ey (uniforme oscillant)</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px;">
+      <div>
+        <div style="font-family:var(--mono);font-size:9px;color:var(--CS);font-weight:700;margin-bottom:4px;text-transform:uppercase;">Ligne de courant (t = t*)</div>
+        <div class="fml" style="border-color:var(--CS);color:var(--CS);font-size:11px;">y = [A·sin(w·t*)/U0]·x + C</div>
+        <div style="font-size:11px;color:var(--dim);">Droites de pente A·sin(w·t*)/U0 variant avec t*.</div>
+      </div>
+      <div>
+        <div style="font-family:var(--mono);font-size:9px;color:var(--CPar);font-weight:700;margin-bottom:4px;text-transform:uppercase;">Trajectoire (lancée en (x0,y0) à t0)</div>
+        <div class="fml" style="border-color:var(--CPar);color:var(--CPar);font-size:11px;">x = x0 + U0·(t - t0)<br>y = y0 - (A/w)·[cos(w·t) - cos(w·t0)]</div>
+      </div>
+      <div>
+        <div style="font-family:var(--mono);font-size:9px;color:var(--CK);font-weight:700;margin-bottom:4px;text-transform:uppercase;">Ligne d'émission (M0, snapshot à T)</div>
+        <div class="fml" style="border-color:var(--CK);color:var(--CK);font-size:11px;">x = x0 + U0·(T - tau)<br>y = y0 + (A/w)·[cos(w·tau) - cos(w·T)]</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="background:rgba(0,122,114,.04);border-color:rgba(0,122,114,.3);">
+    <div class="chdr" style="color:var(--teal);">Propriété fondamentale</div>
+    <p style="font-size:12px;color:var(--dim);line-height:1.75;">
+      <strong style="color:var(--text);">Régime stationnaire (dV/dt = 0) :</strong> Lignes de courant = Trajectoires = Lignes d'émission — toutes confondues.<br>
+      <strong style="color:var(--text);">Régime instationnaire (dV/dt ≠ 0) :</strong> Les trois types sont distincts. Notamment : la trajectoire d'une particule et la ligne d'émission depuis la même source <strong>divergent</strong> dès que le champ de vitesse a évolué entre le départ de la particule et l'instant T courant.
+    </p>
+  </div>
+</div>
+
+<div class="page" id="pg-2">
+  <div class="ptitle">Simulateur — Écoulement autour d'un cylindre</div>
+  <div class="sim-wrap">
+
+    <div class="czone">
+      <div class="chdr-bar">
+        <div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap;">
+          <span class="leg" style="color:var(--CS);">
+            <svg width="20" height="4"><line x1="0" y1="2" x2="20" y2="2" stroke="var(--CS)" stroke-width="2.5"/></svg>LC
+          </span>
+          <span class="leg" style="color:var(--CK);">
+            <svg width="9" height="9"><circle cx="4.5" cy="4.5" r="4" fill="var(--CK)" opacity=".75"/></svg>
+            <svg width="16" height="4"><line x1="0" y1="2" x2="16" y2="2" stroke="var(--CK)" stroke-width="2.5"/></svg>Émission
+          </span>
+          <span class="leg" style="color:var(--CPar);">
+            <svg width="9" height="9"><circle cx="4.5" cy="4.5" r="4.5" fill="var(--CPar)"/></svg>
+            <svg width="16" height="4"><line x1="0" y1="2" x2="16" y2="2" stroke="var(--CPar)" stroke-width="2" stroke-dasharray="5,3"/></svg>Trajectoire
+          </span>
+          <span class="leg" style="color:#888;">
+            <svg width="16" height="9"><circle cx="8" cy="4.5" r="4" fill="#aaa"/></svg>Cylindre
+          </span>
+        </div>
+        <span class="rpill stat" id="regimePill">STATIONNAIRE</span>
+      </div>
+      <canvas id="mainCanvas"></canvas>
+      <div class="cfoot">
+        <span id="timeDisp">t = 0.00 s</span>
+        <span id="infoDisp">LC : droites horizontales (A=0)</span>
+      </div>
+    </div>
+
+    <div style="overflow-y:auto;padding-right:2px;">
+      <div class="cblk">
+        <div class="chd">Régime</div>
+        <div class="cbd">
+          <div class="rr">
+            <button class="rbtn on-s" id="bStat" onclick="setRegime('stat')">STATIONNAIRE</button>
+            <button class="rbtn" id="bInst" onclick="setRegime('inst')">INSTATIONNAIRE</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="cblk">
+        <div class="chd">Paramètres</div>
+        <div class="cbd">
+          <div class="fml-param">
+            <span class="fp-eq">Champ de vitesse (potentiel) :</span>
+            <span style="display:block;margin-top:1px;">v<sub>x</sub> = <span class="fp-u">U₀</span>·[ 1 − <span class="fp-r">R</span>²(x²−y²)/r⁴ ]</span>
+            <span style="display:block;">v<sub>y</sub> = −<span class="fp-u">U₀</span>·[ 2<span class="fp-r">R</span>²xy/r⁴ ] + <span class="fp-a">A</span>·sin(<span class="fp-w">ω</span>t)</span>
+          </div>
+          <div class="crow"><span class="clbl"><span class="fp-u">U₀</span> (m/s)</span><input type="range" id="slU0" min="0.5" max="3.0" step="0.1" value="1.5" oninput="onSlide()"><span class="cval" id="vU0">1.5</span></div>
+          <div class="crow" id="rowA" style="opacity:0.38;"><span class="clbl"><span class="fp-a">A</span> (m/s)</span><input type="range" id="slA" min="0.0" max="2.0" step="0.1" value="0.0" disabled oninput="onSlide()"><span class="cval" id="vA">0.0</span></div>
+          <div class="crow"><span class="clbl"><span class="fp-w">ω</span> (rad/s)</span><input type="range" id="slW" min="0.3" max="3.0" step="0.1" value="1.0" oninput="onSlide()"><span class="cval" id="vW">1.0</span></div>
+          <div class="crow"><span class="clbl"><span class="fp-r">R</span> (m)</span><input type="range" id="slR" min="0.1" max="1.2" step="0.05" value="0.6" oninput="onSlide()"><span class="cval" id="vR">0.60</span></div>
+          <div class="crow"><span class="clbl"><span class="fp-h">H</span> (m)</span><input type="range" id="slH" min="0.8" max="2.8" step="0.1" value="2.0" oninput="onSlide()"><span class="cval" id="vH">2.0</span></div>
+          <div class="crow"><span class="clbl" style="color:var(--amber);">Re</span><span style="flex:1;font-size:8px;color:var(--faint);font-family:var(--mono);overflow:hidden;">ρU·2R/μ</span><span class="cval" id="vRe" style="color:var(--amber);width:46px;">—</span></div>
+          <div class="crow"><span class="clbl">Sim. ×</span><input type="range" id="slSpd" min="0.2" max="3.0" step="0.1" value="1.0" oninput="onSlide()"><span class="cval" id="vSpd">1.0</span></div>
+        </div>
+      </div>
+
+      <div class="cblk">
+        <div class="chd">Affichage</div>
+        <div class="cbd">
+          <div class="chk" onclick="toggleV('showStream')"><div class="chkb" id="chk-showStream" style="border-color:var(--CS);background:var(--CS);color:#fff;">✓</div><span class="chklbl" style="color:var(--CS);">Lig. de courant</span></div>
+          <div class="chk" onclick="toggleV('showStreak')"><div class="chkb" id="chk-showStreak" style="border-color:var(--CK);background:var(--CK);color:#fff;">✓</div><span class="chklbl" style="color:var(--CK);">Ligne d'émission</span></div>
+          <div class="chk" onclick="toggleV('showPath')"><div class="chkb" id="chk-showPath" style="border-color:var(--CPar);background:var(--CPar);color:#fff;">✓</div><span class="chklbl" style="color:var(--CPar);">Trajectoire</span></div>
+          <div class="chk" onclick="toggleV('showVec')"><div class="chkb" id="chk-showVec" style="border-color:#555;background:#555;color:#fff;">✓</div><span class="chklbl" style="color:#555;">Champ V</span></div>
+          <div style="display:flex;gap:4px;margin-top:4px;">
+            <button onclick="doReset()" style="flex:1;padding:4px;background:var(--bg2);border:1px solid var(--bord2);border-radius:4px;font-family:var(--mono);font-size:9px;color:var(--dim);cursor:pointer;">↺ Reset</button>
+            <button onclick="doPause()" id="btnPause" style="flex:1;padding:4px;background:var(--bg2);border:1px solid var(--bord2);border-radius:4px;font-family:var(--mono);font-size:9px;color:var(--dim);cursor:pointer;">⏸ Pause</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="cblk">
+        <div class="chd">Source (cheminée)</div>
+        <div class="cbd">
+          <div style="font-size:9.5px;color:var(--dim);">
+            <div style="display:flex;align-items:center;gap:5px;margin-bottom:4px;">
+              <span style="width:9px;height:9px;border-radius:50%;background:var(--CSrc);display:inline-block;flex-shrink:0;"></span>
+              <span>Position : <span id="srcDisp" style="font-family:var(--mono);color:var(--text);">(-3.0, 0.0)</span></span>
+            </div>
+            <div style="font-size:8.5px;color:var(--faint);line-height:1.5;">Clic sur le canvas<br>→ déplace la source.<br><br>La ligne d'émission (violette) relie les particules émises.<br>La trajectoire (verte --) suit la particule lancée à t=0.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="coinc" id="coincBanner">✓ Stationnaire — LC = Traj. = Émission</div>
+    </div>
+  </div>
+</div>
+
+<div class="page" id="pg-3">
+  <div class="ptitle">Quiz d'Évaluation</div>
+  <p style="font-size:11px;color:var(--dim);">Sélectionnez une réponse puis validez. Une seule tentative. Corrections non affichées.</p>
+  <div id="quizContainer"></div>
+  <div class="qsw" id="qSum">
+    <div><div class="qsb" id="qsBig">—/20</div><div style="font-family:var(--mono);font-size:9px;color:var(--dim);">SCORE FINAL</div></div>
+    <div style="font-size:12px;color:var(--dim);" id="qMsg">Toutes les questions ont été soumises.</div>
+  </div>
+</div>
+
+<div class="page" id="pg-4">
+  <div class="ptitle">Compte-rendu &amp; Synthèse</div>
+  <div class="fsp" id="fsP">
+    <div><div class="fsb" id="fsBig">—</div><div style="font-family:var(--mono);font-size:9px;color:var(--dim);">/20 pts</div></div>
+    <div>
+      <div style="font-size:13px;font-weight:600;" id="fsMent">—</div>
+      <div style="font-size:11px;color:var(--dim);" id="fsDet">Complétez le quiz pour voir le score.</div>
+    </div>
+    <div style="margin-left:auto;"><button class="bt btn" onclick="exportPDF()">📄 PDF</button></div>
+  </div>
+  <div class="crgrid">
+    <div class="crb"><div class="crl">Q1</div><div class="crq">Définition mathématique d'une ligne de courant. Pourquoi peut-elle être courbée même en régime stationnaire ?</div><textarea class="crta" id="cr1" rows="5" placeholder="Votre réponse…"></textarea></div>
+    <div class="crb"><div class="crl">Q2</div><div class="crq">Expliquez la différence visuelle entre la trajectoire (verte) et la ligne d'émission (violette) observée dans le simulateur en régime instationnaire.</div><textarea class="crta" id="cr2" rows="5" placeholder="Votre réponse…"></textarea></div>
+    <div class="crb"><div class="crl">Q3</div><div class="crq">En régime stationnaire (A=0), les trois types coïncident. Démontrez-le pour l'écoulement autour du cylindre (dV/dt = 0).</div><textarea class="crta" id="cr3" rows="5" placeholder="Votre réponse…"></textarea></div>
+    <div class="crb"><div class="crl">Q4 — Synthèse</div><div class="crq">Dans une expérience, un ingénieur injecte un colorant en continu depuis un point M0 dans un écoulement oscillant. Il observe un filament courbe. De quelle ligne s'agit-il ? Comment visualiser les deux autres types ?</div><textarea class="crta" id="cr4" rows="5" placeholder="Votre réponse…"></textarea></div>
+  </div>
+  <div style="margin-top:7px;display:flex;gap:7px;">
+    <button class="bt btn" onclick="exportPDF()">📄 Exporter PDF</button>
+    <span style="font-size:10px;color:var(--faint);align-self:center;">Inclut réponses ouvertes + résultats quiz.</span>
+  </div>
+</div>
+
+<div class="bot">
+  <button class="bg btn" id="btnPrev" onclick="nav(-1)" disabled>← Précédent</button>
+  <span class="si" id="stepInfo">Étape 1 / 5</span>
+  <button class="bt btn" id="btnNext" onclick="nav(1)">Suivant →</button>
+</div>
+</div></div>
+
+<script>
+'use strict';
+
+/* ── Getters ── */
+const $U0  = () => +document.getElementById('slU0').value;
+const $A   = () => +document.getElementById('slA').value;
+const $W   = () => +document.getElementById('slW').value;
+const $R   = () => +document.getElementById('slR').value;
+const $H   = () => +document.getElementById('slH').value;
+const $Spd = () => +document.getElementById('slSpd').value;
+const wallH = 10;
+// Re calculé : ρ=1000 kg/m³, μ=0.001 Pa·s (eau à 20°C), D=2R
+const calcRe = () => Math.round(1000 * $U0() * 2 * $R() / 0.001);
+
+/* ══════════════════════════════════════════════════════════════════════
+   CHAMP DE VITESSE — Écoulement potentiel autour d'un cylindre
+   Formule classique (doublet + écoulement uniforme) :
+
+     vx = U₀ · [ 1 − R²(x²−y²) / (x²+y²)² ]
+     vy = −U₀ · [ 2R²·x·y / (x²+y²)² ]  +  A·sin(ω·t)
+
+   Simple, analytique, sans nombres complexes.
+   Le terme A·sin(ωt) brise la stationnarité → LC ≠ traj. ≠ émission.
+══════════════════════════════════════════════════════════════════════ */
+function velAt(x, y, t) {
+  const U = $U0(), A = $A(), ww = $W(), R = $R();
+  const r2 = x*x + y*y;
+  let u, v;
+  if (r2 < 1e-8) {
+    u = U; v = 0;
+  } else {
+    const R2 = R * R, r4 = r2 * r2;
+    u =  U * (1 - R2 * (x*x - y*y) / r4);
+    v = -U * (2 * R2 * x * y       / r4);
+  }
+  // Clamp near singularity
+  const mag = Math.sqrt(u*u + v*v);
+  if (mag > U * 8) { u *= U*8/mag; v *= U*8/mag; }
+  // Oscillation verticale (instationnaire)
+  v += A * Math.sin(ww * t);
+  return { u, v };
+}
+
+function isInCylinder(x, y) {
+  return x*x + y*y < $R() * $R() * 0.95;
+}
+
+function isOutOfDomain(x, y) {
+  return x > DX1 + 0.3 || x < DX0 - 0.3 || Math.abs(y) > $H() + 0.05;
+}
+
+/* ── RK4 integration step ── */
+function rk4(x, y, t, dt) {
+  const k1 = velAt(x,             y,             t);
+  const k2 = velAt(x+dt/2*k1.u,  y+dt/2*k1.v,  t+dt/2);
+  const k3 = velAt(x+dt/2*k2.u,  y+dt/2*k2.v,  t+dt/2);
+  const k4 = velAt(x+dt*k3.u,    y+dt*k3.v,     t+dt);
+  return {
+    x: x + dt/6*(k1.u+2*k2.u+2*k3.u+k4.u),
+    y: y + dt/6*(k1.v+2*k2.v+2*k3.v+k4.v)
+  };
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   PARTICLE ROUTING — The "magnet" effect comes from v→0 at stagnation
+   points (±x on cylinder). The correct fix is geometric: decompose the
+   velocity into radial + tangential components. When a particle is within
+   a "shadow cone" approaching a stagnation point, we apply a slip
+   correction that keeps it on a geodesic around the cylinder.
+══════════════════════════════════════════════════════════════════════ */
+function advanceParticle(px, py, t0, dt) {
+  const R = $R();
+  const H = $H();
+  const N = 8;          // sub-steps
+  const subDt = dt / N;
+  let x = px, y = py, t = t0;
+
+  for (let s = 0; s < N; s++) {
+    // 1. Reflect off plates (slip condition)
+    if (y >  H) { y =  2*H - y; }
+    if (y < -H) { y = -2*H - y; }
+
+    const r = Math.sqrt(x*x + y*y);
+
+    if (R > 0.05 && r < R * 1.25) {
+      // ── Near-cylinder zone: guaranteed tangential routing ──
+      if (r <= R * 1.005) {
+        // Already on/inside surface — push out radially
+        const sc = R * 1.008 / Math.max(r, 1e-9);
+        x *= sc; y *= sc;
+      }
+      // Decompose velocity into radial and tangential
+      const vel = velAt(x, y, t);
+      const rhat_x = x/r, rhat_y = y/r;            // radial unit vector
+      const tha_x  = -y/r, tha_y = x/r;            // tangential unit vector (CCW)
+      // Project: keep only tangential component when close to surface
+      const vTan  = vel.u * tha_x + vel.v * tha_y; // tangential speed
+      const vRad  = vel.u * rhat_x + vel.v * rhat_y; // radial speed
+      // Near-surface blend: 100% tangential at r=R, fade to free at r=1.25R
+      const blend = 1 - Math.min((r - R) / (R * 0.25), 1);
+      // Effective radial: allow outward only (no inward suction)
+      const vRadEff = vRad * (1 - blend) + Math.max(vRad, 0) * blend;
+      const uEff = vTan * tha_x + vRadEff * rhat_x;
+      const vEff = vTan * tha_y + vRadEff * rhat_y;
+
+      let nx = x + uEff * subDt;
+      let ny = y + vEff * subDt;
+
+      // Safety: ensure not inside cylinder after step
+      const nr = Math.sqrt(nx*nx + ny*ny);
+      if (nr < R * 1.005) { nx *= R*1.008/Math.max(nr,1e-9); ny *= R*1.008/Math.max(nr,1e-9); }
+
+      x = nx; y = ny;
+    } else {
+      // ── Free-flow zone: standard RK4 ──
+      const n = rk4(x, y, t, subDt);
+
+      if (R > 0.05 && n.x*n.x + n.y*n.y < R*R * 1.02) {
+        // Would enter cylinder — push to surface
+        const nr = Math.sqrt(n.x*n.x + n.y*n.y);
+        x = n.x / Math.max(nr,1e-9) * R * 1.01;
+        y = n.y / Math.max(nr,1e-9) * R * 1.01;
+      } else {
+        x = n.x; y = n.y;
+      }
+      // Plate reflection
+      if (y >  H) y =  2*H - y;
+      if (y < -H) y = -2*H - y;
+    }
+    t += subDt;
+  }
+  return { x, y };
+}
+
+/* ── Advance all particles ── */
+function advanceParticles(dt) {
+  const H = $H();
+  emParts.forEach(p => {
+    const res = advanceParticle(p.xc, p.yc, simT - dt, dt);
+    p.xc = res.x; p.yc = res.y;
+  });
+
+  // Tracked particle — respawn at source when exits
+  if (isOutOfDomain(trackedPart.x, trackedPart.y)) {
+    trackedPart.x = SRC.x; trackedPart.y = SRC.y;
+    trackedPart.t0 = simT; trackedPart.trail = [];
+  }
+  const res = advanceParticle(trackedPart.x, trackedPart.y, simT - dt, dt);
+  trackedPart.x = res.x; trackedPart.y = res.y;
+  trackedPart.trail.push({ x: res.x, y: res.y });
+  if (trackedPart.trail.length > 800) trackedPart.trail.shift();
+}
+
+/* ── Domain (x fixed, y adapts to H slider via getter) ── */
+const DX0=-4.5, DX1=5.5;
+const DY0 = () => -$H();
+const DY1 = () =>  $H();
+const toCX  = (x, W)        => (x - DX0) / (DX1 - DX0) * W;
+const toCY  = (y, H)        => { const d0=DY0(),d1=DY1(); return wallH + (1 - (y-d0)/(d1-d0))*(H - 2*wallH); };
+const toDX  = (px, W)       => DX0 + (px/W)*(DX1-DX0);
+const toDY  = (py, H)       => { const d0=DY0(),d1=DY1(); return d0 + (1 - (py-wallH)/(H - 2*wallH))*(d1-d0); };
+
+/* ── State ── */
+const VIS = { showStream:true, showStreak:true, showPath:true, showVec:true };
+let simT = 0, paused = false, lastTS = null, rafId = null;
+
+// Source position (domain coords)
+const SRC = { x: -3.2, y: 0.3 };
+
+// Emitted particles: array of {x0,y0,t0,xc,yc} (current pos updated each frame)
+const emParts = [];
+const EMIT_DT = 0.12; // sim seconds between emissions
+let nextEmit = 0;
+
+// Tracked particle (launched from source at t=0)
+const trackedPart = { x: SRC.x, y: SRC.y, t0: 0, trail: [] };
+
+/* ── Canvas ── */
+const CV = () => document.getElementById('mainCanvas');
+
+function ensureSize() {
+  const cv = CV(), p = cv.parentElement;
+  const r = p.getBoundingClientRect();
+  const W = Math.floor(r.width);
+  const H = Math.max(150, Math.floor(r.height) - 50);
+  if (cv.width !== W || cv.height !== H) { cv.width = W; cv.height = H; }
+}
+
+/* ── Emit particles from source ── */
+function emitStep() {
+  while (nextEmit <= simT) {
+    if (!isInCylinder(SRC.x, SRC.y)) {
+      emParts.push({ x: SRC.x, y: SRC.y, t0: nextEmit, xc: SRC.x, yc: SRC.y });
+    }
+    nextEmit += EMIT_DT;
+  }
+  // prune exited
+  const H_ = $H();
+  for (let i = emParts.length - 1; i >= 0; i--) {
+    const p = emParts[i];
+    if (p.xc > DX1 + 0.4 || p.xc < DX0 - 0.4 || Math.abs(p.yc) > H_ + 0.3) {
+      emParts.splice(i, 1);
+    }
+  }
+}
+
+/* ── Drawing helpers ── */
+function drawBg(ctx, W, H) {
+  const d0 = DY0(), d1 = DY1();
+  const pyTop = toCY(d1, H);
+  const pyBot = toCY(d0, H);
+
+  const g = ctx.createLinearGradient(0, pyTop, 0, pyBot);
+  g.addColorStop(0, '#c8ddf0'); g.addColorStop(1, '#d8eef8');
+  ctx.fillStyle = g; ctx.fillRect(0, pyTop, W, pyBot - pyTop);
+
+  ctx.strokeStyle = 'rgba(50,90,150,.07)'; ctx.lineWidth = 1;
+  for (let xv = Math.ceil(DX0); xv <= DX1; xv++) {
+    const px = toCX(xv, W);
+    ctx.beginPath(); ctx.moveTo(px, pyTop); ctx.lineTo(px, pyBot); ctx.stroke();
+  }
+  for (let yv = Math.ceil(d0); yv <= d1; yv++) {
+    const py = toCY(yv, H);
+    ctx.beginPath(); ctx.moveTo(0, py); ctx.lineTo(W, py); ctx.stroke();
+  }
+  ctx.strokeStyle = 'rgba(50,90,150,.22)'; ctx.lineWidth = 1.2; ctx.setLineDash([4,4]);
+  ctx.beginPath(); ctx.moveTo(toCX(0,W), pyTop); ctx.lineTo(toCX(0,W), pyBot); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(0,toCY(0,H)); ctx.lineTo(W,toCY(0,H)); ctx.stroke();
+  ctx.setLineDash([]);
+
+  ctx.save();
+  ctx.beginPath(); ctx.rect(0, 0, W, pyTop); ctx.clip();
+  ctx.fillStyle = '#b8c5d0'; ctx.fillRect(0, 0, W, pyTop);
+  ctx.strokeStyle = 'rgba(55,75,100,.55)'; ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  for (let ox = -20; ox < W + 20; ox += 9) {
+    ctx.moveTo(ox, 0); ctx.lineTo(ox + pyTop, pyTop);
+  }
+  ctx.stroke();
+  ctx.restore();
+
+  ctx.save();
+  ctx.beginPath(); ctx.rect(0, pyBot, W, H - pyBot); ctx.clip();
+  ctx.fillStyle = '#b8c5d0'; ctx.fillRect(0, pyBot, W, H - pyBot);
+  ctx.strokeStyle = 'rgba(55,75,100,.55)'; ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  for (let ox = -20; ox < W + 20; ox += 9) {
+    ctx.moveTo(ox, pyBot); ctx.lineTo(ox + (H-pyBot), H);
+  }
+  ctx.stroke();
+  ctx.restore();
+
+  ctx.strokeStyle = '#3a4e62'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(0, pyTop); ctx.lineTo(W, pyTop); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(0, pyBot); ctx.lineTo(W, pyBot); ctx.stroke();
+
+  ctx.fillStyle = '#3a4e62'; ctx.font = 'bold 8px IBM Plex Mono,monospace';
+  ctx.textAlign = 'left';
+  ctx.fillText('y = +H', 5, pyTop + 10);
+  ctx.fillText('y = −H', 5, pyBot - 4);
+}
+
+function drawCylinder(ctx, W, H) {
+  const R = $R();
+  if (R < 0.05) return;
+  const px = toCX(0, W), py = toCY(0, H);
+  const dy0 = DY0(), dy1 = DY1();
+  const scaleX = W / (DX1 - DX0);
+  const scaleY = (H - 2*wallH) / (dy1 - dy0);
+  const rPx = R * Math.min(scaleX, scaleY);
+  const g = ctx.createRadialGradient(px-rPx*.3, py-rPx*.3, rPx*.05, px, py, rPx);
+  g.addColorStop(0, '#d0d8e0'); g.addColorStop(1, '#8090a0');
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.arc(px, py, rPx, 0, Math.PI*2); ctx.fill();
+  ctx.strokeStyle = 'rgba(60,80,100,.6)'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.arc(px, py, rPx, 0, Math.PI*2); ctx.stroke();
+}
+
+function drawArrowHead(ctx, x1, y1, x2, y2, size, col) {
+  const a = Math.atan2(y2 - y1, x2 - x1);
+  ctx.fillStyle = col;
+  ctx.beginPath();
+  ctx.moveTo(x2, y2);
+  ctx.lineTo(x2 - size*Math.cos(a-.38), y2 - size*Math.sin(a-.38));
+  ctx.lineTo(x2 - size*Math.cos(a+.38), y2 - size*Math.sin(a+.38));
+  ctx.fill();
+}
+
+/* ── Vector field ── */
+function drawVecField(ctx, W, H) {
+  const spacing = 52;
+  const Hd = $H();
+  for (let px = spacing * 0.55; px < W; px += spacing) {
+    for (let py = spacing * 0.55; py < H; py += spacing) {
+      const x = toDX(px, W), y = toDY(py, H);
+      if (Math.abs(y) > Hd) continue;
+      if (isInCylinder(x, y)) continue;
+      const v = velAt(x, y, simT);
+      const mag = Math.sqrt(v.u*v.u + v.v*v.v);
+      if (mag < 0.05) continue;
+      const ang = Math.atan2(-v.v, v.u);
+      const len = Math.min(mag / ($U0() + $A() + .01) * 20, 20);
+      const ex = px + Math.cos(ang)*len, ey = py + Math.sin(ang)*len;
+      ctx.strokeStyle = 'rgba(26,92,154,.42)'; ctx.lineWidth = 1.4;
+      ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(ex, ey); ctx.stroke();
+      drawArrowHead(ctx, px, py, ex, ey, 5, 'rgba(26,92,154,.55)');
+    }
+  }
+}
+
+/* ── Streamlines: integrate from seed points ── */
+function streamlineStep(x, y, t, ds) {
+  const R = $R(), Hd = $H();
+  const r = Math.sqrt(x*x + y*y);
+
+  if (R > 0.05 && r < R * 1.2) {
+    // Near cylinder: tangential decomposition
+    const vel = velAt(x, y, t);
+    const rhat_x = x/r, rhat_y = y/r;
+    const tha_x = -y/r, tha_y = x/r;
+    const vTan = vel.u*tha_x + vel.v*tha_y;
+    const vRad = vel.u*rhat_x + vel.v*rhat_y;
+    const blend = 1 - Math.min((r - R)/(R*0.2), 1);
+    const vRadEff = vRad*(1-blend) + Math.max(vRad,0)*blend;
+    const spd = Math.max(Math.abs(vTan), 0.01);
+    const nx = x + ds*(vTan*tha_x + vRadEff*rhat_x)/spd;
+    const ny = y + ds*(vTan*tha_y + vRadEff*rhat_y)/spd;
+    const nr = Math.sqrt(nx*nx+ny*ny);
+    if (nr < R*1.01) return { x: nx/nr*R*1.01, y: ny/nr*R*1.01 };
+    return { x: nx, y: ny };
+  }
+  const v = velAt(x, y, t);
+  const mag = Math.sqrt(v.u*v.u + v.v*v.v);
+  if (mag < 0.01) return { x, y };
+  let nx = x + ds*v.u/mag;
+  let ny = y + ds*v.v/mag;
+  // Reflect off plates
+  if (ny >  Hd) ny =  2*Hd - ny;
+  if (ny < -Hd) ny = -2*Hd - ny;
+  return { x: nx, y: ny };
+}
+
+function drawStreamlines(ctx, W, H) {
+  const R = $R(), Hd = $H();
+  const dy0 = DY0(), dy1 = DY1();
+  const seeds = [];
+  const step = (dy1 - dy0) / 13;
+  for (let yv = dy0 + step*0.5; yv < dy1; yv += step) {
+    const xStart = DX0 + 0.05;
+    if (!isInCylinder(xStart, yv)) seeds.push({ x: xStart, y: yv });
+  }
+
+  const ds = 0.035, maxSteps = 1000;
+
+  seeds.forEach(seed => {
+    let x = seed.x, y = seed.y, t = simT;
+    let first = true, prevPx = 0, prevPy = 0;
+    let arrowPositions = [];
+    ctx.strokeStyle = 'rgba(0,122,114,.88)'; ctx.lineWidth = 2.0;
+    ctx.beginPath();
+    for (let i = 0; i < maxSteps; i++) {
+      if (x > DX1+0.1 || x < DX0-0.1 || Math.abs(y) > Hd+0.05) break;
+      if (isInCylinder(x, y)) break;
+      const px_ = toCX(x, W), py_ = toCY(y, H);
+      if (first) { ctx.moveTo(px_, py_); first = false; }
+      else {
+        ctx.lineTo(px_, py_);
+        if (i % 80 === 40) arrowPositions.push({ x1: prevPx, y1: prevPy, x2: px_, y2: py_ });
+      }
+      prevPx = px_; prevPy = py_;
+      const n = streamlineStep(x, y, t, ds);
+      if (Math.abs(n.x-x) < 1e-5 && Math.abs(n.y-y) < 1e-5) break;
+      x = n.x; y = n.y;
+    }
+    ctx.stroke();
+    arrowPositions.forEach(a => drawArrowHead(ctx, a.x1, a.y1, a.x2, a.y2, 6, 'rgba(0,122,114,.88)'));
+  });
+}
+
+/* ── Separation visualization ── */
+/* ── Chimney source ── */
+function drawChimney(ctx, W, H) {
+  const px = toCX(SRC.x, W), py = toCY(SRC.y, H);
+  const bw = 14, bh = 24;
+  ctx.fillStyle = '#c0392b'; ctx.strokeStyle = 'rgba(255,255,255,.5)'; ctx.lineWidth = 1.2;
+  ctx.beginPath(); ctx.rect(px-bw/2, py-bh+3, bw, bh); ctx.fill(); ctx.stroke();
+  ctx.beginPath(); ctx.rect(px-bw/2-2, py-bh, bw+4, 5); ctx.fill(); ctx.stroke();
+  // smoke
+  [0,1,2].forEach(i => {
+    const r = 4.5 + i*2.5;
+    const ox = Math.sin(simT*1.5 + i*1.1) * 4;
+    const oy = py - bh - 5 - i*8;
+    ctx.globalAlpha = 0.22 - i*0.06;
+    ctx.fillStyle = '#c0392b';
+    ctx.beginPath(); ctx.arc(px+ox, oy, r, 0, Math.PI*2); ctx.fill();
+  });
+  ctx.globalAlpha = 1;
+  ctx.font = 'bold 9px IBM Plex Mono,monospace';
+  ctx.fillStyle = '#c0392b'; ctx.textAlign = 'center';
+  ctx.fillText('M\u2080', px, py + 14);
+  ctx.textAlign = 'left';
+}
+
+/* ── Streakline (emitted particles + connecting curve) ── */
+function drawStreakline(ctx, W, H) {
+  if (emParts.length === 0) return;
+  // Particles dots
+  emParts.forEach(p => {
+    const age = simT - p.t0;
+    const alpha = Math.max(0.25, 1 - age / Math.max(simT, 0.1) * 0.5);
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = '#6b3fa0';
+    const px_ = toCX(p.xc, W), py_ = toCY(p.yc, H);
+    ctx.beginPath(); ctx.arc(px_, py_, 5.5, 0, Math.PI*2); ctx.fill();
+  });
+  ctx.globalAlpha = 1;
+  // Connecting curve (sorted by emission time → most recent first = near source)
+  ctx.strokeStyle = 'rgba(107,63,160,.9)'; ctx.lineWidth = 2.8; ctx.setLineDash([]);
+  ctx.beginPath();
+  let first = true;
+  emParts.forEach(p => {
+    const px_ = toCX(p.xc, W), py_ = toCY(p.yc, H);
+    if (first) { ctx.moveTo(px_, py_); first = false; } else ctx.lineTo(px_, py_);
+  });
+  ctx.stroke();
+}
+
+/* ── Trajectory (tracked particle) ── */
+function drawTrajectory(ctx, W, H) {
+  const trail = trackedPart.trail;
+  if (trail.length < 2) return;
+  ctx.strokeStyle = 'rgba(184,104,0,.95)'; ctx.lineWidth = 2.5; ctx.setLineDash([9, 4]);
+  ctx.beginPath();
+  trail.forEach((pt, i) => {
+    const px_ = toCX(pt.x, W), py_ = toCY(pt.y, H);
+    i === 0 ? ctx.moveTo(px_, py_) : ctx.lineTo(px_, py_);
+  });
+  ctx.stroke(); ctx.setLineDash([]);
+  // Current position dot
+  const last = trail[trail.length - 1];
+  ctx.fillStyle = '#b86800';
+  ctx.beginPath(); ctx.arc(toCX(last.x, W), toCY(last.y, H), 7, 0, Math.PI*2); ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,.8)'; ctx.lineWidth = 2; ctx.stroke();
+}
+
+/* ── Main loop ── */
+function frame(ts) {
+  if (!paused) {
+    if (lastTS !== null) {
+      const dt = Math.min((ts - lastTS) / 1000, 0.05) * $Spd();
+      if (dt > 0) { simT += dt; emitStep(); advanceParticles(dt); }
+    }
+    lastTS = ts;
+  }
+  const cv = CV(); ensureSize();
+  const ctx = cv.getContext('2d');
+  const W = cv.width, H = cv.height;
+  ctx.clearRect(0, 0, W, H);
+  drawBg(ctx, W, H);
+  if (VIS.showVec)    drawVecField(ctx, W, H);
+  if (VIS.showStream) drawStreamlines(ctx, W, H);
+  if (VIS.showStreak) drawStreakline(ctx, W, H);
+  if (VIS.showPath)   drawTrajectory(ctx, W, H);
+  drawCylinder(ctx, W, H);
+  drawChimney(ctx, W, H);
+  // HUD
+  const A = $A(), Re = calcRe();
+  const info = A < 0.01
+    ? 'Stationnaire · Re = ' + Re.toLocaleString() + ' (ρU·2R/μ, eau 20°C)'
+    : 'Instationnaire · Re = ' + Re.toLocaleString() + ' — LC, émission et trajectoire divergent';
+  document.getElementById('timeDisp').textContent = 't = ' + simT.toFixed(2) + ' s';
+  document.getElementById('infoDisp').textContent = info;
+  rafId = requestAnimationFrame(frame);
+}
+
+function startSim() { if (rafId) { cancelAnimationFrame(rafId); rafId = null; } lastTS = null; ensureSize(); rafId = requestAnimationFrame(frame); }
+function stopSim()  { if (rafId) { cancelAnimationFrame(rafId); rafId = null; } }
+
+/* ── Controls ── */
+function setRegime(r) {
+  document.getElementById('bStat').className = 'rbtn' + (r === 'stat' ? ' on-s' : '');
+  document.getElementById('bInst').className = 'rbtn' + (r === 'inst' ? ' on-i' : '');
+  const pill   = document.getElementById('regimePill');
+  const coinc  = document.getElementById('coincBanner');
+  const slA    = document.getElementById('slA');
+  const vA     = document.getElementById('vA');
+  const rowA   = document.getElementById('rowA');
+  if (r === 'stat') {
+    pill.className = 'rpill stat'; pill.textContent = 'STATIONNAIRE';
+    // Force et verrouille A = 0
+    slA.value = '0'; vA.textContent = '0.0';
+    slA.disabled = true;
+    if (rowA) rowA.style.opacity = '0.38';
+    coinc.className = 'coinc show';
+  } else {
+    pill.className = 'rpill inst'; pill.textContent = 'INSTATIONNAIRE';
+    slA.disabled = false;
+    if (rowA) rowA.style.opacity = '1';
+    slA.value = '1.2'; vA.textContent = '1.2';
+    coinc.className = 'coinc';
+  }
+  onSlide();
+  doReset();
+}
+
+function onSlide() {
+  document.getElementById('vU0').textContent  = parseFloat(document.getElementById('slU0').value).toFixed(1);
+  document.getElementById('vA').textContent   = parseFloat(document.getElementById('slA').value).toFixed(1);
+  document.getElementById('vW').textContent   = parseFloat(document.getElementById('slW').value).toFixed(1);
+  document.getElementById('vR').textContent   = parseFloat(document.getElementById('slR').value).toFixed(2);
+  document.getElementById('vH').textContent   = parseFloat(document.getElementById('slH').value).toFixed(1);
+  document.getElementById('vRe').textContent  = calcRe().toLocaleString();
+  document.getElementById('vSpd').textContent = '×' + parseFloat(document.getElementById('slSpd').value).toFixed(1);
+}
+
+function toggleV(k) {
+  VIS[k] = !VIS[k];
+  const b = document.getElementById('chk-' + k);
+  const cols = { showStream:'#007a72', showStreak:'#6b3fa0', showPath:'#16a085', showVec:'#555' };
+  const c = cols[k];
+  if (VIS[k]) { b.style.background = c; b.style.borderColor = c; b.style.color = '#fff'; b.textContent = '✓'; }
+  else { b.style.background = 'transparent'; b.style.borderColor = c; b.style.color = 'transparent'; b.textContent = ''; }
+}
+
+function doReset() {
+  simT = 0; lastTS = null; nextEmit = 0; emParts.length = 0;
+  trackedPart.x = SRC.x; trackedPart.y = SRC.y; trackedPart.t0 = 0; trackedPart.trail = [];
+}
+
+let _p = false;
+function doPause() { _p = !_p; paused = _p; document.getElementById('btnPause').textContent = _p ? '▶ Reprendre' : '⏸ Pause'; if (!_p) lastTS = null; }
+
+// Click on canvas → move source
+CV().addEventListener('click', function(e) {
+  const r = this.getBoundingClientRect();
+  const px = (e.clientX - r.left) * (this.width / r.width);
+  const py = (e.clientY - r.top)  * (this.height / r.height);
+  const nx = toDX(px, this.width), ny = toDY(py, this.height);
+  if (isInCylinder(nx, ny)) return;
+  if (Math.abs(ny) >= $H()) return; // outside channel
+  SRC.x = nx; SRC.y = ny;
+  document.getElementById('srcDisp').textContent = '(' + nx.toFixed(2) + ', ' + ny.toFixed(2) + ')';
+  doReset();
+});
+
+/* ── Quiz ── */
+const QD = [
+  { q:"Une ligne de courant peut-elle être courbée en régime stationnaire ?",
+    opts:["Non — les lignes de courant sont toujours des droites",
+          "Oui — si le champ de vitesse est inhomogène dans l'espace (ex. autour d'un cylindre)",
+          "Oui — uniquement en régime instationnaire",
+          "Non — seule la trajectoire peut être courbée"], ans:1 },
+  { q:"Quelle est l'équation différentielle d'une ligne de courant en 2D à t* fixé ?",
+    opts:["dx/dt = u, dy/dt = v",
+          "dx/u = dy/v",
+          "dV/dt = 0",
+          "dX/dt = V(X,t)"], ans:1 },
+  { q:"Dans le simulateur en régime stationnaire, la trajectoire verte et la ligne d'émission violette :",
+    opts:["Divergent — elles ne coïncident jamais",
+          "Coïncident — elles suivent la même courbe",
+          "La trajectoire est une droite, l'émission est courbée",
+          "La ligne d'émission reste fixe, la trajectoire évolue"], ans:1 },
+  { q:"En régime instationnaire, la trajectoire d'une particule et la ligne d'émission depuis la même source :",
+    opts:["Sont toujours confondues",
+          "Divergent — le champ V a évolué entre les instants d'émission des différentes particules",
+          "Sont parallèles mais décalées",
+          "Sont symétriques par rapport à la ligne de courant"], ans:1 },
+  { q:"La ligne d'émission représente expérimentalement :",
+    opts:["La trace d'une particule fluorescente filmée en longue pose",
+          "Le champ instantané de vitesse mesuré par PIV",
+          "Le lieu des positions, à l'instant T, de toutes les particules injectées depuis M0 à tau ≤ T",
+          "La streamfunction de l'écoulement potentiel"], ans:2 },
+  { q:"La trajectoire dX/dt = V(X(t),t) est une notion :",
+    opts:["Eulérienne — liée à un point fixe de l'espace",
+          "Lagrangienne — suit une particule matérielle identifiée",
+          "Statistique — moyenne sur un ensemble de particules",
+          "Thermodynamique — dépend de l'entropie"], ans:1 },
+  { q:"Pour l'écoulement autour du cylindre (stationnaire, A=0), les lignes de courant sont :",
+    opts:["Des droites horizontales",
+          "Des cercles concentriques",
+          "Des courbes qui contournent le cylindre et se referment à l'infini",
+          "Des spirales"], ans:2 },
+  { q:"Dans le simulateur, pour observer que la trajectoire ≠ ligne d'émission, il faut :",
+    opts:["Passer en régime instationnaire (A ≠ 0)",
+          "Augmenter le rayon du cylindre",
+          "Désactiver les lignes de courant",
+          "Réduire U0 à zéro"], ans:0 }
+];
+
+let qAns = {}, qVal = {};
+
+function buildQuiz() {
+  const c = document.getElementById('quizContainer'); c.innerHTML = '';
+  QD.forEach((q, qi) => {
+    const d = document.createElement('div'); d.className = 'qcard';
+    let h = `<div class="qtop"><span class="qtag">Q${qi+1}/${QD.length}</span><span class="qtxt">${q.q}</span></div><div class="qopts">`;
+    q.opts.forEach((o, oi) => h += `<div class="qopt" id="qo-${qi}-${oi}" onclick="selQ(${qi},${oi})">${o}</div>`);
+    h += `</div><div class="qfoot"><button class="bt btn" style="font-size:9px;padding:3px 10px;" id="qbtn-${qi}" onclick="valQ(${qi})">Valider</button><span class="qfb" id="qfb-${qi}">Non validé</span></div>`;
+    d.innerHTML = h; c.appendChild(d);
+  });
+}
+
+function selQ(qi, oi) {
+  if (qVal[qi]) return;
+  qAns[qi] = oi;
+  document.querySelectorAll(`[id^="qo-${qi}-"]`).forEach((el, i) => el.classList.toggle('sel', i === oi));
+}
+
+function valQ(qi) {
+  if (qVal[qi] || qAns[qi] == null) return;
+  qVal[qi] = true;
+  document.querySelectorAll(`[id^="qo-${qi}-"]`).forEach(el => { el.classList.add('locked'); if (el.classList.contains('sel')) { el.classList.remove('sel'); el.classList.add('sel-l'); } });
+  const b = document.getElementById('qbtn-' + qi);
+  b.disabled = true; b.style.opacity = '.4'; b.style.cursor = 'not-allowed';
+  document.getElementById('qfb-' + qi).textContent = '✓ Réponse enregistrée';
+  if (Object.keys(qVal).length === QD.length) finalScore();
+}
+
+function finalScore() {
+  let ok = 0; QD.forEach((_, qi) => { if (qVal[qi] && qAns[qi] === QD[qi].ans) ok++; });
+  const s = Math.round(ok / QD.length * 20); window._finalScore = s;
+  document.getElementById('qSum').className = 'qsw show';
+  document.getElementById('qsBig').textContent = s + '/20';
+  document.getElementById('qMsg').textContent = ok + ' bonne(s) / ' + QD.length;
+  document.getElementById('scoreChip').textContent = s + '/20';
+  document.getElementById('scoreChip').style.display = 'inline-block';
+  document.getElementById('fsP').className = 'fsp show';
+  document.getElementById('fsBig').textContent = s;
+  document.getElementById('fsBig').style.color = s >= 10 ? 'var(--green)' : 'var(--amber)';
+  document.getElementById('fsMent').textContent = s >= 16 ? 'Excellent !' : s >= 10 ? 'Validé ✓' : 'À approfondir';
+  document.getElementById('fsDet').textContent = 'Quiz : ' + ok + '/' + QD.length;
+}
+
+/* ── PDF ── */
+function exportPDF() {
+  if (typeof window.jspdf === 'undefined') { alert('jsPDF non chargé.'); return; }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' }); const M = 18; let y = 20;
+  const add = (t, sz, bold, col, ind) => { doc.setFont('helvetica', bold ? 'bold' : 'normal'); doc.setFontSize(sz); doc.setTextColor(...(col || [0,0,0])); const ls = doc.splitTextToSize(t, 174-(ind||0)); doc.text(ls, M+(ind||0), y); y += ls.length*(sz*.43)+2; };
+  const hr = () => { doc.setDrawColor(0,122,114); doc.setLineWidth(.3); doc.line(M,y,210-M,y); y+=4; };
+  add('LignesSim Pro v3 — Compte-rendu', 14, true, [0,122,114]);
+  add('Dr. Ali KHOUZAM | ali.khouzam@icam.fr | Icam Grand Paris Sud', 9, false, [80,80,80]);
+  y+=2; hr();
+  if (window._finalScore != null) { add('Score Quiz : ' + window._finalScore + ' / 20', 11, true); y+=2; hr(); }
+  add('QUESTIONS OUVERTES', 11, true, [0,122,114]); y+=2;
+  [['cr1','Q1 — Ligne de courant courbée'],['cr2','Q2 — Trajectoire vs émission'],['cr3','Q3 — Coïncidence stationnaire'],['cr4','Q4 — Synthèse expérimentale']].forEach(([id,lbl]) => {
+    if (y > 260) { doc.addPage(); y = 20; }
+    add(lbl, 9, true, [30,30,30]);
+    add(document.getElementById(id).value || '(Sans réponse)', 9, false, [50,50,50], 4); y+=3;
+  });
+  if (window._finalScore != null) {
+    hr(); add('RÉPONSES AU QUIZ', 11, true, [0,122,114]); y+=2;
+    QD.forEach((q, qi) => {
+      if (y > 260) { doc.addPage(); y = 20; }
+      add('Q' + (qi+1) + '. ' + q.q, 8.5, true, [30,30,30]);
+      add('Réponse : ' + (qAns[qi] != null ? q.opts[qAns[qi]] : '(non répondu)'), 8.5, false, [60,60,60], 4); y+=2;
+    });
+  }
+  doc.save('CR_LignesSim_Pro_v3.pdf');
+}
+
+/* ── Navigation ── */
+const NPAGES = 5; let curPage = 0;
+function goPage(idx) {
+  for (let i = 0; i < NPAGES; i++) {
+    const pg = document.getElementById('pg-' + i); if (pg) pg.classList.toggle('active', i === idx);
+    const ni = document.getElementById('nav-' + i); if (ni) { ni.classList.remove('active','done'); if (i < idx) ni.classList.add('done'); }
+  }
+  curPage = idx;
+  const ni = document.getElementById('nav-' + idx); if (ni) ni.classList.add('active');
+  document.getElementById('btnPrev').disabled = (idx === 0);
+  document.getElementById('btnNext').disabled = (idx === NPAGES - 1);
+  document.getElementById('stepInfo').textContent = 'Étape ' + (idx+1) + ' / ' + NPAGES;
+  if (idx === 2) { setTimeout(() => { ensureSize(); startSim(); }, 80); }
+  else stopSim();
+  if (idx === 4 && window._finalScore != null) document.getElementById('fsP').className = 'fsp show';
+}
+function nav(d) { goPage(Math.min(NPAGES-1, Math.max(0, curPage + d))); }
+
+// Sidebar
+[0,1,2,3,4].forEach(i => { document.getElementById('nav-'+i).addEventListener('click', () => goPage(i)); });
+
+/* ── Init ── */
+buildQuiz();
+// Init Re display
+document.getElementById('vRe').textContent = calcRe().toLocaleString();
+window.addEventListener('resize', () => { if (curPage === 2) ensureSize(); });
+</script>
+</body>
+</html>
